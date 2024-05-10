@@ -1,0 +1,253 @@
+---
+title: "Joe_Garcia_DATA608_Story2"
+author: "Joe Garcia"
+date: "2024-02-15"
+output: 
+    html_document:
+    highlight: pygments
+    theme: cerulean
+    toc: true
+    pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+## Setup
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(openintro)
+library(ResourceSelection)
+library(VIM)
+library(pracma)
+library(MASS)
+library(dplyr)
+library(knitr)
+library(modelr)
+library(ggplot2)
+library(Deriv)
+
+
+```
+
+
+## Introduction
+
+The Federal Reserve's mandate from Congress is to control inflation and to maintain low unemployment. These seem to be contradictory objectives.
+For this story you will need to source the following data for the last 25 years;
+
+### The Consumer Price Index (CPI) (Bureau of Labor Statistics)
+
+### The FED Funds Rate (FRED) (Federal Reserve Board)
+
+### Unemployment Rate  (Bureau of Labor Statistics)
+
+## Question we have overall
+
+Your Data Visualizations should be designed to answer the question "Has the FED been able to fulfill the mandate given to it by Congress?"
+
+## Data
+
+We take 3 pieces of data from the Federal Reserve manadata to combate unemployment. We took the 3 latest datasets from FRED website.
+
+```{r}
+cpi_data <- read_csv("/Users/joe/Documents/0_CUNY_SPS/DATA_608_Knowledge_&_Visual_Analytics/Story_2/data/CPIAUCSL.csv")
+fundsrate_data <- read_csv("/Users/joe/Documents/0_CUNY_SPS/DATA_608_Knowledge_&_Visual_Analytics/Story_2/data/FEDFUNDS.csv")
+unemployment_data <- read_csv("/Users/joe/Documents/0_CUNY_SPS/DATA_608_Knowledge_&_Visual_Analytics/Story_2/data/UNRATE.csv")
+
+```
+
+## Data Cleaning the Data
+
+We then cleaned the data, particularly we had to take the data and create a subset so the the data could be at the same year, so that the cpi_data could be at the same year as the fundsrate_data and unemployment_data. Then we took the subset_fundsrate_data and subset_unemployment_data and muiltiplied them by 100 so that they could be at they could be at the same scale as the subset_cpi_data.
+
+
+```{r}
+subset_cpi_data <- cpi_data %>%
+    filter(DATE >= as.Date("1954-01-01") & DATE <= as.Date("2024-01-01"))
+
+subset_fundsrate_data <- fundsrate_data %>%
+    filter(DATE >= as.Date("1954-01-01") & DATE <= as.Date("2024-01-01"))
+
+subset_unemployment_data <- unemployment_data %>%
+    filter(DATE >= as.Date("1954-01-01") & DATE <= as.Date("2024-01-01"))
+
+
+#2016-01-01
+#1954-01-01
+subset_fundsrate_data <- subset_fundsrate_data %>%
+  mutate(FEDFUNDS = FEDFUNDS * 100)
+
+subset_unemployment_data <- subset_unemployment_data %>%
+  mutate(UNRATE = UNRATE * 100)
+
+```
+
+## Data Visualizations
+
+Next, we created some graphs to visualize the data. It appears that the Consumer Price Index (CPI) has been slowly increasing since the 1950s and has been gradually rising more rapidly. Although there has been a wide discrepancy between the Federal Funds Rate and the Unemployment rate throughout history, it has been relatively stable over the last 10 years, except for the significant shock to the system in 2020 with the job market, which was brought under control by 2024.
+
+```{r}
+
+
+#ggplot(subset_cpi_data, aes(x = DATE, y = CPIAUCSL)) +
+#  geom_line(color = "blue") +
+#  labs(title = "Line Plot of Subsetted Data", x = "Date", y = "CPIAUCSL") +
+#  theme_minimal()
+
+
+
+
+ggplot() +
+  geom_line(data = subset_cpi_data, aes(x = DATE, y = CPIAUCSL, color = "Consumer Price Index")) +
+  geom_line(data = subset_fundsrate_data, aes(x = DATE, y = FEDFUNDS, color = "Federal FUNDS Rate")) +
+  geom_line(data = subset_unemployment_data, aes(x = DATE, y = UNRATE, color = "Unemployment")) +
+  labs(title = "Multiple Data Sets Featuring Federal Funds, CPI, and Unemployment", x = "Date", y = "Value") +
+  theme_minimal()
+
+```
+## Focus on the Federal Funds 
+
+Here we just look at the federal funds as the greatest to least just to see what the range it.
+
+```{r}
+
+arranged_subset_fundsrate_data <- subset_fundsrate_data %>% arrange(desc(FEDFUNDS))
+arranged_subset_fundsrate_data
+
+```
+
+I transformed the data into merged_data, which includes the subsets subset_fundsrate_data and subset_unemployment_data, so that I could create a graph with them.
+
+```{r}
+
+arranged_subset_unemployment_data <- subset_unemployment_data %>% arrange(desc(subset_unemployment_data))
+arranged_subset_unemployment_data
+
+
+merged_data <- inner_join(subset_fundsrate_data, subset_unemployment_data, by = "DATE")
+merged_data
+
+#arranged_merged_data <- merged_data %>% arrange(desc(FEDFUNDS))
+#arranged_merged_data
+```
+We can observe the Federal funds rate and the unemployment rate over the same time period from 1954 to 2024. The Federal funds rate tends to increase when the unemployment rate decreases. This relationship ideally holds most of the time; however, there are periods where it does not occur.
+
+```{r}
+ggplot(merged_data, aes(x = DATE)) +
+  geom_bar(aes(y = FEDFUNDS, fill = "Fed Funds Rate"), stat = "identity", position = "dodge", alpha = 0.7) +
+  geom_bar(aes(y = UNRATE, fill = "Unemployment Rate"), stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Comparison of Fed Funds Rate and Unemployment Rate",
+       x = "Date",
+       y = "Rate") +
+  scale_fill_manual(values = c("Fed Funds Rate" = "blue", "Unemployment Rate" = "red"),
+                    name = "Indicator") +
+  theme_minimal()
+
+
+```
+
+
+
+Next, we placed them side by side to observe their behavior. We noted that when the unemployment rate (in red) began to rise, the Federal Funds Rate (in blue) also appeared to increase. However, the time period in 2020 proved to be complicated. During this period, despite a significant increase in unemployment, the Federal funds rate appeared to remain stable, while the unemployment rate skyrocketed.
+
+```{r}
+ggplot(merged_data, aes(x = DATE)) +
+  geom_bar(aes(y = FEDFUNDS, fill = "Fed Funds Rate"), stat = "identity", position = "identity", width = 5)+
+  geom_bar(aes(y = -UNRATE, fill = "Unemployment Rate"), stat = "identity", position = "identity", width = 5) +
+  labs(title = "Butterfly Bar Chart of Fed Funds Rate and Unemployment Rate",
+       x = "Date",
+       y = "Rate") +
+  scale_fill_manual(values = c("Fed Funds Rate" = "blue", "Unemployment Rate" = "red"),
+                    name = "Indicator") +
+  theme_minimal() +
+  coord_flip()+
+  theme(axis.ticks.y = element_line(size = 2)) +
+  scale_y_continuous(breaks = seq(-10, 10, by = 1))
+
+
+```
+
+We put the Federal funds rate and the unemployment rate data into array columns in order to calculate their derivatives, which represent the change in each column's values over time.
+
+```{r}
+
+fedfunds_array <- as.array(merged_data$FEDFUNDS)
+result <- fedfunds_array[-1] - fedfunds_array[-length(fedfunds_array)]
+
+unemp_array <- as.array(merged_data$UNRATE)
+result2 <- unemp_array[-1] - unemp_array[-length(unemp_array)]
+
+merged_data <- merged_data[-nrow(merged_data), ]
+
+merged_data <- cbind(merged_data, result, result2)
+
+
+
+```
+
+
+
+```{r}
+
+#ggplot(merged_data, aes(x = DATE)) +
+#  geom_bar(aes(y = result, fill = "Fed Funds Rate"), stat = "identity", position = "identity", width = 9)+
+#  geom_bar(aes(y = -result2, fill = "Unemployment Rate"), stat = "identity", position = "identity", width = 9) +
+#  labs(title = "Butterfly Bar Chart of Fed Funds Rate and Unemployment Rate",
+#       x = "Date",
+#       y = "Rate") +
+#  scale_fill_manual(values = c("Fed Funds Rate" = "blue", "Unemployment Rate" = "red"),
+#                    name = "Indicator") +
+#  theme_minimal() +
+#  coord_flip()+
+#  theme(axis.ticks.y = element_line(size = 2)) +
+#  scale_y_continuous(breaks = seq(-50, 50, by = 1))
+
+#p <- ggplot(merged_data, aes(x = DATE)) +
+#  geom_line(aes(y = result, fill = "Fed Funds Rate"), stat = "identity", position = "dodge", alpha = 0.7) +
+#  geom_line(aes(y = -result2, fill = "Unemployment Rate"), stat = "identity", position = "dodge", alpha = 0.7) +
+#  labs(title = "Comparison of Fed Funds Rate and Unemployment Rate",
+#       x = "Date",
+#       y = "Rate") +
+#  scale_fill_manual(values = c("Fed Funds Rate" = "blue", "Unemployment Rate" = "red"),
+ #                   name = "Indicator") +
+#  theme_minimal()
+
+#p + ylim(-250,250)
+
+#dates <- as.array(merged_data$DATE)
+#dates <- dates[-length(dates)]
+
+#merged_data <- data.frame(dates, result, result2)
+  
+
+```
+
+```{r}
+
+merged_data <- merged_data[merged_data$DATE > as.Date("2016-01-01"), ]
+
+#p<- ggplot() +
+#  geom_line(data = merged_data, aes(x = DATE, y = result, color = "Federal Funds")) +
+#  geom_line(data = merged_data, aes(x = DATE, y = -result2, color = "Unemployment")) +
+#  labs(title = "Line Chart with Multiple Data Sets", x = "Date", y = "Value") +
+#  theme_minimal()
+#p + ylim(-100,100)
+
+p <- ggplot(merged_data, aes(x = DATE)) +
+  geom_bar(aes(y = result, fill = "Fed Funds Rate"), stat = "identity", width = 30, alpha = 0.5) +
+  geom_bar(aes(y = -result2, fill = "Unemployment Rate"), stat = "identity", width = 30, alpha = 0.5) +
+  labs(title = "Comparison of Fed Funds Rate and Unemployment Rate",
+       x = "Date",
+       y = "Rate") +
+  scale_fill_manual(values = c("Fed Funds Rate" = "blue", "Unemployment Rate" = "red"),
+                     name = "Indicator") +
+  theme_minimal()
+p + ylim(-100, 100)
+
+```
+
+## Conclusion
+
+Has the Fed been able to fulfill the mandate given to it by Congress? Based on the visual analysis of the data we obtained from FRED, it appears that the Federal Reserve has been successful in reducing the unemployment rate through its management of the federal funds rate. Therefore, I believe they have fulfilled the mandate given to them by Congress.
+
